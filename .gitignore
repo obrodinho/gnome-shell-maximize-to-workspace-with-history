@@ -1,0 +1,8 @@
+# Ignore vscode specific settings
+.vscode/
+
+# Ignore IntelliJ IDEA specific settings
+.idea/
+
+# Ignore Makefile
+Makefile

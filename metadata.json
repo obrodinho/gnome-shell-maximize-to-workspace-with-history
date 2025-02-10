@@ -3,5 +3,5 @@
   "description": "[fork] Like MacOS, puts windows in a new workspace when maximized or full-screened and brings you back to original workspacce when unmaximized or unfull-screened or the window gets closed. Recommended to use with multi finger gestures configured for your trackpad.",
   "uuid": "maximize-to-workspace@brodinho.dev",
   "url": "https://github.com/obrodinho/gnome-shell-maximize-to-workspace-with-history",
-  "shell-version": ["3.36", "3.38", "40", "41", "42", "43", "46"]
+  "shell-version": ["46"]
 }

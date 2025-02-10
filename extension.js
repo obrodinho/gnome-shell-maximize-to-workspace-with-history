@@ -1,7 +1,7 @@
 import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
 
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 export default class MaximizeToWorkspaceExtension extends Extension {
     constructor(metadata) {
@@ -16,10 +16,19 @@ export default class MaximizeToWorkspaceExtension extends Extension {
     _changeWorkspace(win, manager, index) {
         const n = manager.get_n_workspaces();
         if (n <= index) {
+            log(`Workspace index ${index} out of bounds.`);
             return;
         }
+
+        if (win.get_workspace().index() === index) {
+            log(`Window ${win.get_title()} (${win.get_id()}) is already on workspace ${index}.`);
+            return; // Skip if already on the target workspace
+        }
+
+        log(`Moving window ${win.get_title()} (${win.get_id()}) to workspace ${index}.`);
+        const timestamp = GLib.get_monotonic_time() / 1000; // Use reliable timestamp
         win.change_workspace_by_index(index, 1);
-        manager.get_workspace_by_index(index).activate(global.get_current_time());
+        manager.get_workspace_by_index(index).activate(timestamp);
     }
 
     // Get the index of the first empty workspace available for a window
@@ -32,12 +41,14 @@ export default class MaximizeToWorkspaceExtension extends Extension {
                 .list_windows()
                 .filter(w => !w.is_always_on_all_workspaces() && win.get_monitor() === w.get_monitor()).length;
             if (winCount < 1) {
+                log(`Found empty workspace ${i} for window ${win.get_title()} (${win.get_id()}).`);
                 return i;
             }
         }
 
         // Return last workspace by default, but start with 1 to avoid programming bugs
         if (lastWorkspace < 1) lastWorkspace = 1;
+        log(`Returning last workspace ${lastWorkspace} for window ${win.get_title()} (${win.get_id()}).`);
         return lastWorkspace;
     }
 
@@ -47,6 +58,7 @@ export default class MaximizeToWorkspaceExtension extends Extension {
 
         // Ensure the window is normal
         if (win.window_type !== Meta.WindowType.NORMAL) {
+            log(`Ignoring non-normal window ${win.get_title()} (${win.get_id()}).`);
             return;
         }
 
@@ -64,6 +76,7 @@ export default class MaximizeToWorkspaceExtension extends Extension {
                     this._changeWorkspace(win, workspaceManager, this._fullScreenApps[name]);
                 }
                 delete this._fullScreenApps[name];
+                log(`Restored workspace for fullscreen app ${win.get_title()} (${win.get_id()}).`);
                 return;
             }
 
@@ -73,6 +86,7 @@ export default class MaximizeToWorkspaceExtension extends Extension {
                     this._changeWorkspace(win, workspaceManager, this._oldWorkspaces[name]);
                 }
                 delete this._oldWorkspaces[name];
+                log(`Restored workspace for unmaximized window ${win.get_title()} (${win.get_id()}).`);
             }
             return;
         }
@@ -102,7 +116,9 @@ export default class MaximizeToWorkspaceExtension extends Extension {
         let win = act.meta_window;
         let name = win.get_id();
         if (this._oldWorkspaces[name] !== undefined) {
-            win.get_display().get_workspace_manager().get_workspace_by_index(this._oldWorkspaces[name]).activate(global.get_current_time());
+            const timestamp = GLib.get_monotonic_time() / 1000; // Use reliable timestamp
+            win.get_display().get_workspace_manager().get_workspace_by_index(this._oldWorkspaces[name]).activate(timestamp);
+            log(`Restored original workspace for closed window ${win.get_title()} (${win.get_id()}).`);
         }
     }
 
@@ -138,6 +154,8 @@ export default class MaximizeToWorkspaceExtension extends Extension {
         this._windowManagerHandles.push(global.window_manager.connect('destroy', (_, act) => {
             this._handleWindowClose(act);
         }));
+
+        log('MaximizeToWorkspaceExtension enabled.');
     }
 
     disable() {
@@ -149,5 +167,7 @@ export default class MaximizeToWorkspaceExtension extends Extension {
             GLib.Source.remove(timerId);
         }
         this._debounceTimers.clear();
+
+        log('MaximizeToWorkspaceExtension disabled.');
     }
 }
